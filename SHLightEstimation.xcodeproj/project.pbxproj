@@ -44,6 +44,7 @@
 		F80682032820BA5A0048DACE /* Window.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Window.h; sourceTree = "<group>"; };
 		F80682042820BD0C0048DACE /* LightEstimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LightEstimation.h; sourceTree = "<group>"; };
 		F80682052820BD240048DACE /* LightEstimation.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LightEstimation.cpp; sourceTree = "<group>"; };
+		F806820728213D440048DACE /* helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = helper.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +88,7 @@
 				F80682032820BA5A0048DACE /* Window.h */,
 				F80682042820BD0C0048DACE /* LightEstimation.h */,
 				F80682052820BD240048DACE /* LightEstimation.cpp */,
+				F806820728213D440048DACE /* helper.h */,
 			);
 			path = SHLightEstimation;
 			sourceTree = "<group>";

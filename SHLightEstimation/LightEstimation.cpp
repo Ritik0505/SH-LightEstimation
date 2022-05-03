@@ -265,6 +265,213 @@ bool LightEstimation::CreatePresentationSurface()
     return true;
 }
 
+uint32_t LightEstimation::GetSwapChainImages(VkSurfaceCapabilitiesKHR& surfaceCapabilites)
+{
+    uint32_t imageCount = surfaceCapabilites.minImageCount + 1;
+    ((surfaceCapabilites.maxImageCount > 0) && (imageCount > surfaceCapabilites.maxImageCount)) ?
+        imageCount = surfaceCapabilites.maxImageCount : 1;
+
+    return uint32_t(imageCount);
+}
+
+VkSurfaceFormatKHR LightEstimation::GetSwapChainFormat(std::vector<VkSurfaceFormatKHR>& surfaceFormats)
+{
+    // If the list contains only one one entry with undefined format
+    // It means that there are no preferred surface formats and any one can be chosen
+
+    if ((surfaceFormats.size() == 1) && (surfaceFormats.at(0).format == VK_FORMAT_UNDEFINED)) {
+        return VkSurfaceFormatKHR{ VK_FORMAT_R8G8B8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
+    }
+
+    //Else check if list contains R8 G8 B8 A8 format with Non Linear ColorSpace
+    for (VkSurfaceFormatKHR& format : surfaceFormats) {
+        if (format.format == VK_FORMAT_R8G8B8A8_UNORM) {
+            return format;
+        }
+    }
+
+    // Returning the first format from the list
+    return surfaceFormats.at(0);
+}
+
+VkExtent2D LightEstimation::GetSwapChainExtent(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+    //If width == height == -1
+    //we define the size by ourselves but it must fit within defined confines
+    if (surfaceCapabilities.currentExtent.width == -1) {
+        VkExtent2D swapchainExtent = { 600, 600 };
+        if (swapchainExtent.width < surfaceCapabilities.minImageExtent.width) {
+            swapchainExtent.width = surfaceCapabilities.minImageExtent.width;
+        }
+        if (swapchainExtent.height < surfaceCapabilities.minImageExtent.height) {
+            swapchainExtent.height = surfaceCapabilities.minImageExtent.height;
+        }
+        if (swapchainExtent.width > surfaceCapabilities.maxImageExtent.width) {
+            swapchainExtent.width = surfaceCapabilities.maxImageExtent.width;
+        }
+        if (swapchainExtent.height > surfaceCapabilities.maxImageExtent.height) {
+            swapchainExtent.height = surfaceCapabilities.maxImageExtent.height;
+        }
+        m_SwapChainExent = swapchainExtent;
+        return swapchainExtent;
+    }
+    m_SwapChainExent = surfaceCapabilities.currentExtent;
+    return surfaceCapabilities.currentExtent;
+}
+
+VkImageUsageFlags LightEstimation::GetSwapChainUsageFlags(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+    if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+        return VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    }
+
+    std::cout << "VK_IMAGE_USAGE_TRANSFER_DST_BIT not supported by SwapChain " << std::endl;
+    std::cout << "Supported Usage Flags include: " << std::endl
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ? "VK_IMAGE_USAGE_TRANSFER_SRC_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT ? "VK_IMAGE_USAGE_TRANSFER_DST_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT ? "VK_IMAGE_USAGE_SAMPLED_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT ? "VK_IMAGE_USAGE_STORAGE_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ? "VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT ? "VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT ? "VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT\n" : "")
+        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT ? "VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT\n" : "")
+        << std::endl;
+
+    return static_cast<VkImageUsageFlags>(-1);
+}
+
+VkSurfaceTransformFlagBitsKHR LightEstimation::GetSwapChainTransform(VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+    if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
+        return VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    }
+    return surfaceCapabilities.currentTransform;
+}
+
+VkPresentModeKHR LightEstimation::GetSwapChainPresentMode(std::vector<VkPresentModeKHR>& presentModes)
+{
+    for (VkPresentModeKHR& mode : presentModes) {
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            return mode;
+        }
+    }
+
+    //This mode is always available
+    for (VkPresentModeKHR& mode : presentModes) {
+        if (mode == VK_PRESENT_MODE_FIFO_KHR) {
+            return mode;
+        }
+    }
+
+    std::cout << "EVEN FIFO_MODE NOT SUPPORTED" << std::endl;
+    return static_cast<VkPresentModeKHR>(-1);
+}
+
+bool LightEstimation::CreateSwapChain()
+{
+    // Acquiring Surface Capabilities
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, m_PresentationSurface, &surfaceCapabilities) != VK_SUCCESS) {
+        std::cout << "COULD NOT CHECK PRESENTATION SURFACE CAPABILITIES " << std::endl;
+        return false;
+    }
+
+    // Acquiring Supported Surface Formats
+    uint32_t formatsCount = 0;
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_PresentationSurface, &formatsCount, nullptr) != VK_SUCCESS) {
+        std::cout << "ERROR OCCURRED DURING PRESENTATION SURFACE FORMAT ENUMERATION " << std::endl;
+        return false;
+    }
+
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_PresentationSurface, &formatsCount, surfaceFormats.data()) != VK_SUCCESS) {
+        std::cout << "ERROR OCCURRED DURING PRESENTAION SURFACE FORMAT ENUMERATION " << std::endl;
+        return false;
+    }
+
+    //Acquiring Supported Presentation Modes
+    uint32_t presentModesCount = 0;
+    if (vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_PresentationSurface, &presentModesCount, nullptr) != VK_SUCCESS) {
+        std::cout << "ERROR OCCURRED DURING PRESENTATION SURFACE PRESENT MODES ENUMERATION " << std::endl;
+        return false;
+    }
+
+    std::vector<VkPresentModeKHR> presentModes(presentModesCount);
+    if (vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_PresentationSurface, &presentModesCount, presentModes.data()) != VK_SUCCESS) {
+        std::cout << "ERROR OCCURRED DURING PRESENTATION SURFACE PRESENT MODES ENUMERATION " << std::endl;
+        return false;
+    }
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
+    swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchainCreateInfo.pNext = nullptr;
+    swapchainCreateInfo.flags = 0;
+    swapchainCreateInfo.surface = m_PresentationSurface;
+    swapchainCreateInfo.minImageCount = GetSwapChainImages(surfaceCapabilities);
+
+    VkSurfaceFormatKHR format = GetSwapChainFormat(surfaceFormats);
+    swapchainCreateInfo.imageFormat = format.format;
+    swapchainCreateInfo.imageColorSpace = format.colorSpace;
+
+    swapchainCreateInfo.imageExtent = GetSwapChainExtent(surfaceCapabilities);
+
+    //     imageArrayLayers  Defines the number of layers in a swap chain images(that is, views);
+    //     typically this value will be one but if we want to create multiview or stereo(stereoscopic 3D) images,
+    //    we can set it to some higher value.
+    swapchainCreateInfo.imageArrayLayers = 1;
+
+    swapchainCreateInfo.imageUsage = GetSwapChainUsageFlags(surfaceCapabilities);
+    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchainCreateInfo.queueFamilyIndexCount = 0;
+    swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+    swapchainCreateInfo.preTransform = GetSwapChainTransform(surfaceCapabilities);
+    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.presentMode = GetSwapChainPresentMode(presentModes);
+    swapchainCreateInfo.clipped = VK_TRUE;
+    swapchainCreateInfo.oldSwapchain = m_SwapChain;
+
+    if (vkCreateSwapchainKHR(m_Device, &swapchainCreateInfo, nullptr, &m_SwapChain)) {
+        std::cout << "COULD NOT CREATE SWAPCHAIN " << std::endl;
+        return false;
+    }
+
+    uint32_t imageCount = 0;
+    vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, nullptr);
+    m_SwapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(m_Device, m_SwapChain, &imageCount, m_SwapChainImages.data());
+
+    swapChainParameters.Handle = m_SwapChain;
+    swapChainParameters.Extent = GetSwapChainExtent(surfaceCapabilities);
+    swapChainParameters.Format = format.format;
+
+    return true;
+}
+
+bool LightEstimation::CreateSwapChainImageViews()
+{
+    uint32_t size = m_SwapChainImages.size();
+    m_ImageViews.resize(size);
+
+    for (uint32_t i = 0; i < size; i++) {
+        VkImageViewCreateInfo imageViewCreateInfo{};
+        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.image = m_SwapChainImages[i];
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.format = swapChainParameters.Format;
+        imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
+        if (vkCreateImageView(m_Device, &imageViewCreateInfo, nullptr, &m_ImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image views!");
+        }
+    }
+    return true;
+}
+
+
 void LightEstimation::displayHandles(){
     std::cout << "Instance Handle: " << m_Instance << std::endl;
     std::cout << "Physical Device Handle: " << m_PhysicalDevice << std::endl;
