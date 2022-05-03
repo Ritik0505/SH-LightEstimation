@@ -14,7 +14,8 @@ int main() {
     LightEstimation application;
     
     //Initalising application
-    application.init();
+    if(!application.init())
+        throw std::runtime_error("Could not initialise application");
     
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -25,7 +26,7 @@ int main() {
         glfwPollEvents();
     }
     
-    application.window.cleanup();
+    application.cleanUp();
     
     return 0;
 }
